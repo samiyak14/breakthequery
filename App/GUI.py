@@ -8,6 +8,7 @@ import sys
 import requests
 import re
 import threading
+import json
 
 # ----------- Paths -----------
 title_img = 'Title.png'
@@ -21,6 +22,7 @@ else:
 
 title_path = os.path.join(application_path, title_img)
 ip_file_path = os.path.abspath(os.path.join(application_path, '..', ip_file))
+backup_file = os.path.join(application_path, "backup_log.json")
 
 with open(ip_file_path, 'r') as f:
     server_ip = f.read().strip()
@@ -35,6 +37,21 @@ name = ""
 pc_no = 0
 
 questions = get_questions()
+answers = [""]*len(questions)  # store user's answers locally
+
+# ----------- Backup function -----------
+def save_backup(data):
+    try:
+        if os.path.exists(backup_file):
+            with open(backup_file, "r") as f:
+                logs = json.load(f)
+        else:
+            logs = []
+        logs.append(data)
+        with open(backup_file, "w") as f:
+            json.dump(logs, f, indent=2)
+    except:
+        pass  # fail silently
 
 # ----------- Window -----------
 class Window(ctk.CTk):
@@ -42,7 +59,7 @@ class Window(ctk.CTk):
         super().__init__()
         self.title("Break The Query!")
         self.geometry("700x650")
-        self.resizable(True,True)
+        self.resizable(True, True)
         self.frames = {}
         for F in (HomeFrame, DetailsPage, StartPage, QuestionPage, FinalPage):
             frame = F(self)
@@ -57,11 +74,8 @@ class Window(ctk.CTk):
 class HomeFrame(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master)
-        # Title Image
         title_label = ctk.CTkLabel(self, image=PhotoImage(file=title_path), text="")
         title_label.pack(pady=(50,20))
-
-        # Description
         description_label = ctk.CTkLabel(
             self,
             text="Welcome to the SQL Challenge!\nAre you ready to break the query?",
@@ -69,8 +83,6 @@ class HomeFrame(ctk.CTkFrame):
             justify="center"
         )
         description_label.pack(pady=20)
-
-        # Start button
         ctk.CTkButton(self, text="START CHALLENGE", width=220, height=50,
                       font=ctk.CTkFont(size=16, weight="bold"),
                       corner_radius=12,
@@ -81,17 +93,12 @@ class HomeFrame(ctk.CTkFrame):
 class DetailsPage(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master)
-
-        # Page title
         title_label = ctk.CTkLabel(self, text="Enter Your Details", font=ctk.CTkFont(size=24, weight="bold"))
         title_label.pack(pady=(40, 20))
 
-        # Form frame (fixed width, height adapts)
         form = ctk.CTkFrame(self, corner_radius=15, fg_color="#2b2b2b", width=350)
         form.pack(pady=20)
-        # form.pack_propagate(False)  <- REMOVE this line
 
-        # Labels and entry fields with padding
         ctk.CTkLabel(form, text="Name:", anchor="w").pack(padx=20, pady=(20, 5), fill="x")
         name_input = ctk.CTkEntry(form)
         name_input.pack(padx=20, pady=(0, 10), fill="x")
@@ -100,7 +107,6 @@ class DetailsPage(ctk.CTkFrame):
         pc_no_input = ctk.CTkEntry(form)
         pc_no_input.pack(padx=20, pady=(0, 20), fill="x")
 
-        # Submit button
         def submit_info():
             global name, pc_no
             player_name = name_input.get().strip()
@@ -143,30 +149,24 @@ class QuestionPage(ctk.CTkFrame):
         self.master = master
         self.q_index = 0
 
-        # Question text
         self.qno_var = ctk.StringVar()
         self.question_var = ctk.StringVar()
         self.status_var = ctk.StringVar()
-        self.status_color = ctk.StringVar(value="white")
 
         self.q_label = ctk.CTkLabel(self, textvariable=self.qno_var, font=ctk.CTkFont(size=16, weight="bold"))
         self.q_label.pack(pady=(20,5))
         self.question_label = ctk.CTkLabel(self, textvariable=self.question_var, font=ctk.CTkFont(size=16), wraplength=620, justify="left")
         self.question_label.pack(pady=5)
 
-        # Input box
         self.query_entry = ctk.CTkTextbox(self, width=600, height=180, wrap=WORD)
         self.query_entry.pack(pady=20)
 
-        # Status label
         self.status_label = ctk.CTkLabel(self, textvariable=self.status_var, font=ctk.CTkFont(size=14), text_color="white")
         self.status_label.pack(pady=10)
 
-        # Progress bar
         self.progress = ctk.CTkProgressBar(self, width=500, progress_color="#2ECC71")
         self.progress.pack(pady=10)
 
-        # Buttons frame
         btn_frame = ctk.CTkFrame(self, fg_color=None)
         btn_frame.pack(pady=15)
 
@@ -185,11 +185,15 @@ class QuestionPage(ctk.CTkFrame):
         self.show_question(0)
 
     def show_question(self, index):
-        global questions, last_time
+        global questions, last_time, answers
         self.q_index = index
         self.question_var.set(questions[index]['question'])
         self.qno_var.set(f"Question {index+1} of {len(questions)}")
+
+        # Show previous answer if exists
         self.query_entry.delete('1.0', END)
+        self.query_entry.insert('1.0', answers[index])
+
         self.status_var.set("")
         self.status_label.configure(text_color="white")
         self.progress.set(self.q_index / len(questions))
@@ -197,24 +201,22 @@ class QuestionPage(ctk.CTkFrame):
         self.next_btn.configure(text="SUBMIT" if self.q_index == len(questions)-1 else "NEXT")
 
     def check_query_(self):
-        global questions, name, pc_no, time_taken, last_time
+        global questions, name, pc_no, time_taken, last_time, answers
         user_input = self.query_entry.get('1.0', END).strip()
+        answers[self.q_index] = user_input  # save current input
         forbidden = [r"\bDELETE\b", r"\bDROP\b", r"\bTRUNCATE\b", r"\bALTER\b", r"\bUPDATE\b"]
         if any(re.search(pat, user_input, re.IGNORECASE) for pat in forbidden):
             messagebox.showerror("Error", "Forbidden query")
             return
 
-        # Calculate time
         now = datetime.now()
         time_taken[self.q_index] += (now - last_time).total_seconds()
         last_time = now
 
-        # Check query
         result = check_query(questions[self.q_index], user_input)
         self.status_var.set(result['response'])
         self.status_label.configure(text_color="green" if result['match'] else "red")
 
-        # Prepare data
         data = {
             "name": name,
             "pc_number": pc_no,
@@ -223,7 +225,10 @@ class QuestionPage(ctk.CTkFrame):
             "correct": result['match']
         }
 
-        # Send in background
+        # Backup locally
+        save_backup(data)
+
+        # Send to server in background
         def send_to_server(d):
             try:
                 requests.post(url_server, json=d, timeout=2)
