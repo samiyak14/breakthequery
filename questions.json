@@ -1,0 +1,55 @@
+{
+  "number": 10,
+  "questions": [
+    {
+      "index": 0,
+      "question": "Retrieve the name of each customer along with their account type.",
+      "answer_key": "SELECT Customer.Name, Account.AccountType FROM Customer JOIN Account ON Customer.ID = Account.CustomerID;"
+    },
+    {
+      "index": 1,
+      "question": "Retrieve branch names along with the total number of accounts managed by each branch.",
+      "answer_key": "SELECT Branch.Name, COUNT(Account.ID) FROM Branch JOIN Account ON Branch.ID = Account.BranchID GROUP BY Branch.ID;"
+    },
+    {
+      "index": 2,
+      "question": "Retrieve names of customers who have taken at least one loan with an interest rate greater than 8%.",
+      "answer_key": "SELECT DISTINCT Customer.Name FROM Customer JOIN Loan ON Customer.ID = Loan.CustomerID WHERE Loan.InterestRate > 8;"
+    },
+    {
+      "index": 3,
+      "question": "Retrieve names of customers who have more than two accounts.",
+      "answer_key": "SELECT Customer.Name FROM Customer JOIN Account ON Customer.ID = Account.CustomerID GROUP BY Customer.ID HAVING COUNT(Account.ID) > 2;"
+    },
+    {
+      "index": 4,
+      "question": "Retrieve branch names where the average account balance is greater than 100,000.",
+      "answer_key": "SELECT Branch.Name FROM Branch JOIN Account ON Branch.ID = Account.BranchID GROUP BY Branch.ID HAVING AVG(Account.Balance) > 100000;"
+    },
+    {
+      "index": 5,
+      "question": "Retrieve account IDs where the total withdrawal amount exceeds the total deposit amount.",
+      "answer_key": "SELECT AccountID FROM 'Transaction' GROUP BY AccountID HAVING SUM(CASE WHEN TransactionType = 'Withdrawal' THEN Amount ELSE 0 END) > SUM(CASE WHEN TransactionType = 'Deposit' THEN Amount ELSE 0 END);"
+    },
+    {
+      "index": 6,
+      "question": "Retrieve names of customers whose total loan amount is greater than their total account balance.",
+      "answer_key": "SELECT Name FROM Customer WHERE (SELECT COALESCE(SUM(Amount),0) FROM Loan WHERE Loan.CustomerID = Customer.ID) > (SELECT COALESCE(SUM(Balance),0) FROM Account WHERE Account.CustomerID = Customer.ID);"
+    },
+    {
+      "index": 7,
+      "question": "Retrieve the loan ID where the total payments made are less than 40% of the loan amount.",
+      "answer_key": "SELECT Loan.ID FROM Loan LEFT JOIN LoanPayment ON Loan.ID = LoanPayment.LoanID GROUP BY Loan.ID HAVING COALESCE(SUM(LoanPayment.PaymentAmount),0) < 0.4 * Loan.Amount;"
+    },
+    {
+      "index": 8,
+      "question": "Retrieve the employee name and branch name of the highest paid employee in each branch.",
+      "answer_key": "SELECT E.Name, B.Name FROM Employee E JOIN Branch B ON E.BranchID = B.ID WHERE E.Salary = (SELECT MAX(Salary) FROM Employee WHERE BranchID = E.BranchID);"
+    },
+    {
+      "index": 9,
+      "question": "Retrieve the name of the customer who has the second highest total transaction amount across all their accounts.",
+      "answer_key": "SELECT Customer.Name FROM Customer JOIN Account ON Customer.ID = Account.CustomerID JOIN 'Transaction' ON Account.ID = 'Transaction'.AccountID GROUP BY Customer.ID ORDER BY SUM('Transaction'.Amount) DESC LIMIT 1 OFFSET 1;"
+    }
+  ]
+}
