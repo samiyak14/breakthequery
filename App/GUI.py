@@ -130,12 +130,30 @@ class DetailsPage(ctk.CTkFrame):
 class StartPage(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master)
-        ctk.CTkLabel(self, text="Do You Want To Start The Game?", font=ctk.CTkFont(size=18)).pack(pady=100)
+        ctk.CTkLabel(self, text="Do You Want To Start The Game?", font=ctk.CTkFont(size=20, weight="bold")).pack(pady=(40, 20))
+
+        rules_frame = ctk.CTkFrame(self, corner_radius=15, fg_color="#2b2b2b", width=600)
+        rules_frame.pack(pady=20, padx=20, fill="both", expand=True)
+
+        # Rules text
+        ctk.CTkLabel(rules_frame, text="📌 RULES OF THE CHALLENGE", font=ctk.CTkFont(size=16, weight="bold", underline=True)).pack(pady=(20,10))
+
+        ctk.CTkLabel(rules_frame, text="1. You MUST click the 'TRY' button for every question to submit your answer.", font=ctk.CTkFont(size=14), anchor="w", justify="left").pack(padx=20, pady=(0,10), fill="x")
+        ctk.CTkLabel(rules_frame, text="2. You can go back to previous questions and update your answers,", font=ctk.CTkFont(size=14), anchor="w", justify="left").pack(padx=20, pady=(0,0), fill="x")
+        ctk.CTkLabel(rules_frame, text="but don't forget to click 'TRY' again to register the new answer.", font=ctk.CTkFont(size=14, weight="bold"), text_color="#E74C3C", anchor="w", justify="left").pack(padx=40, pady=(0,10), fill="x")
+        ctk.CTkLabel(rules_frame, text="3. Winner selection:", font=ctk.CTkFont(size=14, weight="bold"), anchor="w", justify="left").pack(padx=20, pady=(0,0), fill="x")
+        ctk.CTkLabel(rules_frame, text="- The player with the most correct answers wins.", font=ctk.CTkFont(size=14), anchor="w", justify="left").pack(padx=40, fill="x")
+        ctk.CTkLabel(rules_frame, text="- If there is a tie, the player with the least total time taken wins.", font=ctk.CTkFont(size=14), anchor="w", justify="left").pack(padx=40, pady=(0,10), fill="x")
+
+        # Emphasis note
+        ctk.CTkLabel(rules_frame, text="⚠️ Emphasis:", font=ctk.CTkFont(size=14, weight="bold", underline=True), anchor="w", justify="left").pack(padx=20, pady=(10,0), fill="x")
+        ctk.CTkLabel(rules_frame, text="Clicking 'TRY' is mandatory for your answer to count!", font=ctk.CTkFont(size=14, weight="bold"), text_color="#E74C3C", anchor="w", justify="left").pack(padx=40, pady=(0,20), fill="x")
+
         ctk.CTkButton(self, text="START GAME", width=220, height=50,
                       font=ctk.CTkFont(size=16, weight="bold"),
                       corner_radius=12,
                       hover_color="#2ECC71",
-                      command=lambda: start_game(master)).pack(pady=50)
+                      command=lambda: start_game(master)).pack(pady=20)
 
 def start_game(master):
     global last_time
@@ -158,8 +176,14 @@ class QuestionPage(ctk.CTkFrame):
         self.question_label = ctk.CTkLabel(self, textvariable=self.question_var, font=ctk.CTkFont(size=16), wraplength=620, justify="left")
         self.question_label.pack(pady=5)
 
+        # Answer box with placeholder
         self.query_entry = ctk.CTkTextbox(self, width=600, height=180, wrap=WORD)
         self.query_entry.pack(pady=20)
+        self.placeholder_text = "Enter your query here..."
+        self.query_entry.insert("1.0", self.placeholder_text)
+        self.query_entry.bind("<FocusIn>", lambda e: self.clear_placeholder())
+        self.query_entry.bind("<FocusOut>", lambda e: self.restore_placeholder())
+        self.query_entry.bind("<Key>", lambda e: self.clear_placeholder())
 
         self.status_label = ctk.CTkLabel(self, textvariable=self.status_var, font=ctk.CTkFont(size=14), text_color="white")
         self.status_label.pack(pady=10)
@@ -184,6 +208,17 @@ class QuestionPage(ctk.CTkFrame):
 
         self.show_question(0)
 
+    # Placeholder handling
+    def clear_placeholder(self):
+        current_text = self.query_entry.get("1.0", "end-1c")
+        if current_text == self.placeholder_text:
+            self.query_entry.delete("1.0", END)
+
+    def restore_placeholder(self):
+        current_text = self.query_entry.get("1.0", "end-1c").strip()
+        if current_text == "":
+            self.query_entry.insert("1.0", self.placeholder_text)
+
     def show_question(self, index):
         global questions, last_time, answers
         self.q_index = index
@@ -192,8 +227,7 @@ class QuestionPage(ctk.CTkFrame):
 
         # Show previous answer if exists
         self.query_entry.delete('1.0', END)
-        self.query_entry.insert('1.0', answers[index])
-
+        self.query_entry.insert('1.0', answers[index] if answers[index] else self.placeholder_text)
         self.status_var.set("")
         self.status_label.configure(text_color="white")
         self.progress.set(self.q_index / len(questions))
@@ -203,6 +237,8 @@ class QuestionPage(ctk.CTkFrame):
     def check_query_(self):
         global questions, name, pc_no, time_taken, last_time, answers
         user_input = self.query_entry.get('1.0', END).strip()
+        if user_input == self.placeholder_text:
+            user_input = ""
         answers[self.q_index] = user_input  # save current input
         forbidden = [r"\bDELETE\b", r"\bDROP\b", r"\bTRUNCATE\b", r"\bALTER\b", r"\bUPDATE\b"]
         if any(re.search(pat, user_input, re.IGNORECASE) for pat in forbidden):
